@@ -1,9 +1,11 @@
 package com.springboot.app.item.controllers;
 
 //import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+
 import com.springboot.app.item.models.Item;
 import com.springboot.app.commons.models.entity.Producto;
 import com.springboot.app.item.service.ItemService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,12 +58,19 @@ public class ItemController {
         return itemService.findAll();
     }
 
-//    @HystrixCommand(fallbackMethod = "metodoAlternativo")
+    //    @HystrixCommand(fallbackMethod = "metodoAlternativo")
     @GetMapping("/ver/{id}/cantidad/{cantidad}")
     Item detalle(@PathVariable Long id, @PathVariable Integer cantidad) {
 //        return itemService.findById(id, cantidad);
         return circuitBreakerFactory.create("items")
                 .run(() -> itemService.findById(id, cantidad), e -> metodoAlternativo(id, cantidad, e));
+    }
+
+    //  Con esta forma no funciona el archivo de configuración, sino con el properties o yml
+    @CircuitBreaker(name = "items", fallbackMethod = "metodoAlternativo")
+    @GetMapping("/ver2/{id}/cantidad/{cantidad}")
+    Item detalle2(@PathVariable Long id, @PathVariable Integer cantidad) {
+        return itemService.findById(id, cantidad);
     }
 
     Item metodoAlternativo(Long id, Integer cantidad, Throwable e) {

@@ -6,6 +6,7 @@ import com.springboot.app.item.models.Item;
 import com.springboot.app.commons.models.entity.Producto;
 import com.springboot.app.item.service.ItemService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RefreshScope
 @RestController
@@ -73,6 +75,13 @@ public class ItemController {
         return itemService.findById(id, cantidad);
     }
 
+    @CircuitBreaker(name = "items", fallbackMethod = "metodoAlternativo2")
+    @TimeLimiter(name = "items")
+    @GetMapping("/ver3/{id}/cantidad/{cantidad}")
+    CompletableFuture<Item> detalle3(@PathVariable Long id, @PathVariable Integer cantidad) {
+        return CompletableFuture.supplyAsync(() -> itemService.findById(id, cantidad));
+    }
+
     Item metodoAlternativo(Long id, Integer cantidad, Throwable e) {
         log.info(e.getMessage());
 
@@ -84,6 +93,19 @@ public class ItemController {
         producto.setPrecio(500.00);
         item.setProducto(producto);
         return item;
+    }
+
+    CompletableFuture<Item> metodoAlternativo2(Long id, Integer cantidad, Throwable e) {
+        log.info(e.getMessage());
+
+        Item item = new Item();
+        Producto producto = new Producto();
+        item.setCantidad(cantidad);
+        producto.setId(id);
+        producto.setNombre("Camara Sony");
+        producto.setPrecio(500.00);
+        item.setProducto(producto);
+        return CompletableFuture.supplyAsync(() -> item);
     }
 
     @GetMapping("/obtener-config")
